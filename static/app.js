@@ -332,10 +332,39 @@ async function sendMessage() {
 async function loadProjectTree() {
   try {
     const sessionId = 'default'; // You can generate unique session IDs if needed
-    const res = await fetch(`/api/tree?session_id=${sessionId}`);
+    const timestamp = Date.now(); // Cache busting
+    const version = 'v2'; // Version parameter to force cache refresh
+    const url = `/api/tree?session_id=${sessionId}&t=${timestamp}&v=${version}`;
+    
+    console.log('Fetching tree from:', url);
+    console.log('Current time:', new Date().toISOString());
+    
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
+    
+    console.log('Response status:', res.status);
+    console.log('Response headers:', res.headers);
+    
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    }
+    
     const data = await res.json();
     
-    if (data.tree) {
+    console.log('Raw API response:', data);
+    console.log('Type of data:', typeof data);
+    console.log('Type of data.tree:', typeof data.tree);
+    console.log('Is data.tree an array?', Array.isArray(data.tree));
+    console.log('data.tree value:', data.tree);
+    
+    if (data.tree && Array.isArray(data.tree)) {
+      console.log('Processing tree with', data.tree.length, 'items');
       projectTree.innerHTML = '';
       
       // Add current path display
@@ -354,7 +383,8 @@ async function loadProjectTree() {
       }
       
       // Add directories and files
-      data.tree.forEach(item => {
+      data.tree.forEach((item, index) => {
+        console.log(`Processing item ${index}:`, item);
         const treeItem = document.createElement('div');
         treeItem.className = 'tree-item';
         
@@ -370,9 +400,17 @@ async function loadProjectTree() {
         
         projectTree.appendChild(treeItem);
       });
+      
+      console.log('Tree loaded successfully');
+    } else {
+      console.error('Invalid tree data:', data);
+      console.error('data.tree type:', typeof data.tree);
+      console.error('data.tree value:', data.tree);
+      projectTree.innerHTML = '<div class="error">Invalid tree data received</div>';
     }
   } catch (e) {
     console.error('Failed to load project tree:', e);
+    console.error('Error details:', e.message, e.stack);
     projectTree.innerHTML = '<div class="error">Failed to load project tree</div>';
   }
 }
@@ -642,3 +680,21 @@ async function loadChat(filename) {
 // Initialize the app
 loadChatList();
 loadProjectTree();
+
+// Global test function for debugging
+window.testTreeAPI = async function() {
+  console.log('=== Testing Tree API ===');
+  try {
+    const res = await fetch('/api/tree?session_id=test&t=' + Date.now());
+    console.log('Response status:', res.status);
+    const data = await res.json();
+    console.log('API Response:', data);
+    console.log('Tree type:', typeof data.tree);
+    console.log('Tree is array:', Array.isArray(data.tree));
+    console.log('Tree length:', data.tree ? data.tree.length : 'undefined');
+    return data;
+  } catch (e) {
+    console.error('Test failed:', e);
+    return null;
+  }
+};
