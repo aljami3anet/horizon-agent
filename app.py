@@ -1,4 +1,4 @@
-import os
+\import os
 import re
 import time
 import json
@@ -46,7 +46,7 @@ REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379')
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 
 # Session state for current directory
-session_paths = {}
+session_paths: Dict[str, str] = {}
 
 # Circuit breaker for model calls
 class CircuitBreaker:
@@ -202,7 +202,7 @@ When you need to use a tool, respond with a JSON object inside a ```json code bl
             safe_path = os.path.abspath(directory)
             # Basic security check to prevent traversing up from the project root
             # if not safe_path.startswith(os.path.abspath('.')):
-            #    return "Error: Access to this path is restricted."
+            #     return "Error: Access to this path is restricted."
 
             files = [f for f in os.listdir(safe_path) if f != "__pycache__"]
             if not files: 
@@ -407,7 +407,7 @@ When you need to use a tool, respond with a JSON object inside a ```json code bl
                 
                 response = self.circuit_breaker.call(
                     lambda: requests.post(
-                        "https://openrouter.ai/api/v1/chat/completions",
+                        "[https://openrouter.ai/api/v1/chat/completions](https://openrouter.ai/api/v1/chat/completions)",
                         headers=headers,
                         json=payload,
                         stream=True
@@ -415,6 +415,7 @@ When you need to use a tool, respond with a JSON object inside a ```json code bl
                 )
                 
                 if response.status_code != 200:
+                    logger.log('WARNING', f'Model {model} returned status {response.status_code}', request_id, model=model, status_code=response.status_code, response_text=response.text)
                     continue
                 
                 duration = time.time() - start_time
@@ -480,7 +481,8 @@ def api_chat():
     if not user_text:
         return jsonify({'error': 'Empty message'}), 400
 
-    response_data = process_user_message(user_text)
+    request_id = getattr(request, 'request_id', 'unknown')
+    response_data = process_user_message(user_text, request_id)
     return jsonify(response_data)
 
 @app.route('/api/chat/stream', methods=['POST'])
@@ -500,10 +502,8 @@ def api_chat_stream():
 
     return Response(generate(), mimetype='text/event-stream')
 
-def process_user_message(user_text: str) -> dict:
+def process_user_message(user_text: str, request_id: str) -> dict:
     """Process user message with enhanced error handling and logging."""
-    request_id = getattr(request, 'request_id', 'unknown')
-    
     with assistant_lock:
         assistant.messages.append({"role": "user", "content": user_text})
         
@@ -576,7 +576,7 @@ def process_user_message_stream(user_text: str, request_id: str):
                         chunk = json.loads(data)
                         if 'choices' in chunk and chunk['choices']:
                             delta = chunk['choices'][0].get('delta', {})
-                            if 'content' in delta:
+                            if 'content' in delta and delta['content'] is not None:
                                 content = delta['content']
                                 full_response += content
                                 yield {"type": "content", "content": content}
