@@ -494,6 +494,20 @@ def metrics():
 def health():
     return jsonify({'status': 'healthy', 'timestamp': datetime.utcnow().isoformat()})
 
+@app.route('/api/test-tree', methods=['GET'])
+@log_request
+def api_test_tree():
+    """Test endpoint to verify tree API format."""
+    return jsonify({
+        'message': 'Tree API test',
+        'tree': [
+            {'name': 'test.txt', 'type': 'file', 'path': '/test.txt'},
+            {'name': 'testdir', 'type': 'directory', 'path': '/testdir'}
+        ],
+        'current_path': '/workspace',
+        'parent_path': None
+    })
+
 @app.route('/api/chat', methods=['POST'])
 @log_request
 def api_chat():

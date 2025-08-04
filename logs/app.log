@@ -17,3 +17,6 @@
 {"timestamp": "2025-08-04T17:58:02.603108", "level": "INFO", "message": "Request completed", "request_id": "473f1ee0-716e-4d97-b7ac-427779e248a5", "endpoint": "api_tree", "duration": 0.0004630088806152344}
 {"timestamp": "2025-08-04T18:04:48.474412", "level": "INFO", "message": "Request completed", "request_id": "efbae5ae-619d-492a-9c01-6ba7602f3fe6", "endpoint": "api_tree", "duration": 0.0005383491516113281}
 {"timestamp": "2025-08-04T18:05:27.165220", "level": "INFO", "message": "Request completed", "request_id": "58ec0e59-8fd9-4307-a447-9357a3e05847", "endpoint": "api_tree", "duration": 0.0004489421844482422}
+{"timestamp": "2025-08-04T18:16:49.615413", "level": "INFO", "message": "Request completed", "request_id": "fc4dc902-579c-43fb-8e4d-359d3885da93", "endpoint": "api_tree", "duration": 0.0006618499755859375}
+{"timestamp": "2025-08-04T18:17:17.533994", "level": "INFO", "message": "Request completed", "request_id": "582631c7-0776-43bc-a963-ce8efef7383e", "endpoint": "api_tree", "duration": 0.0003981590270996094}
+{"timestamp": "2025-08-04T18:17:37.417918", "level": "INFO", "message": "Request completed", "request_id": "5539c58a-8e4e-4c08-9d40-a906b075d25d", "endpoint": "api_test_tree", "duration": 8.511543273925781e-05}
