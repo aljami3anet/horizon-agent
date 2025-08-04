@@ -336,7 +336,9 @@ async function loadProjectTree() {
     const version = 'v2'; // Version parameter to force cache refresh
     const url = `/api/tree?session_id=${sessionId}&t=${timestamp}&v=${version}`;
     
+    console.log('=== loadProjectTree Debug ===');
     console.log('Fetching tree from:', url);
+    console.log('Full URL:', window.location.origin + url);
     console.log('Current time:', new Date().toISOString());
     
     const res = await fetch(url, {
@@ -349,6 +351,7 @@ async function loadProjectTree() {
     });
     
     console.log('Response status:', res.status);
+    console.log('Response URL:', res.url);
     console.log('Response headers:', res.headers);
     
     if (!res.ok) {
@@ -362,6 +365,7 @@ async function loadProjectTree() {
     console.log('Type of data.tree:', typeof data.tree);
     console.log('Is data.tree an array?', Array.isArray(data.tree));
     console.log('data.tree value:', data.tree);
+    console.log('data.tree length:', data.tree ? data.tree.length : 'undefined');
     
     if (data.tree && Array.isArray(data.tree)) {
       console.log('Processing tree with', data.tree.length, 'items');
