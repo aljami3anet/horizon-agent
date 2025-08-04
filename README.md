@@ -76,7 +76,7 @@ A production-grade AI coding assistant with advanced features including streamin
 2. **Using Docker directly**
    ```bash
    docker build -t ai-coder-agent .
-   docker run -p 5051:5051 -e OPENROUTER_API_KEY=your_key ai-coder-agent docker-user/docker-image:latest
+   docker run -p 5051:5051 -e OPENROUTER_API_KEY=your_key docker-user/docker-image:latest
    ```
 
 ## 🔧 Configuration
