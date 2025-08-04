@@ -698,3 +698,24 @@ window.testTreeAPI = async function() {
     return null;
   }
 };
+
+// Simple test function that bypasses loadProjectTree
+window.testDirectAPI = async function() {
+  console.log('=== Direct API Test ===');
+  try {
+    const response = await fetch('/api/tree?session_id=test&t=' + Date.now());
+    const data = await response.json();
+    
+    console.log('Direct API call result:');
+    console.log('- Status:', response.status);
+    console.log('- Tree type:', typeof data.tree);
+    console.log('- Is array:', Array.isArray(data.tree));
+    console.log('- Tree length:', data.tree ? data.tree.length : 'undefined');
+    console.log('- First item:', data.tree ? data.tree[0] : 'none');
+    
+    return data;
+  } catch (error) {
+    console.error('Direct API test failed:', error);
+    return null;
+  }
+};
