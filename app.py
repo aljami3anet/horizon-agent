@@ -475,7 +475,16 @@ def serve_index():
 
 @app.route('/upgrade')
 def serve_upgrade():
-    return send_from_directory('upgrade/ui', 'upgrade_index.html')
+    return send_from_directory('static', 'index.html')
+
+@app.route('/<path:filename>')
+def serve_static(filename):
+    response = send_from_directory('static', filename)
+    # Add cache control headers to prevent caching
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 @app.route('/metrics')
 def metrics():

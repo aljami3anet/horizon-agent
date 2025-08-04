@@ -13,3 +13,5 @@
 {"timestamp": "2025-08-04T17:46:35.547614", "level": "INFO", "message": "Request completed", "request_id": "91e39ac5-9dbd-4ed5-b695-4625f68ba1fd", "endpoint": "api_chat", "duration": 0.39820122718811035}
 {"timestamp": "2025-08-04T17:46:52.223664", "level": "info", "message": "Chat history saved to chats/chat_2025-08-04_17-46-52.md", "request_id": null}
 {"timestamp": "2025-08-04T17:46:52.223914", "level": "INFO", "message": "Request completed", "request_id": "5c321abf-0de5-4026-be9a-d3a2d2f2740f", "endpoint": "api_chat", "duration": 0.3578603267669678}
+{"timestamp": "2025-08-04T17:57:31.912598", "level": "INFO", "message": "Request completed", "request_id": "891b1e99-558d-4a65-842d-6538b30a11aa", "endpoint": "api_tree", "duration": 0.0011353492736816406}
+{"timestamp": "2025-08-04T17:58:02.603108", "level": "INFO", "message": "Request completed", "request_id": "473f1ee0-716e-4d97-b7ac-427779e248a5", "endpoint": "api_tree", "duration": 0.0004630088806152344}

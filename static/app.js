@@ -332,10 +332,13 @@ async function sendMessage() {
 async function loadProjectTree() {
   try {
     const sessionId = 'default'; // You can generate unique session IDs if needed
-    const res = await fetch(`/api/tree?session_id=${sessionId}`);
+    const timestamp = Date.now(); // Cache busting
+    const res = await fetch(`/api/tree?session_id=${sessionId}&t=${timestamp}`);
     const data = await res.json();
     
-    if (data.tree) {
+    console.log('Tree API response:', data); // Debug log
+    
+    if (data.tree && Array.isArray(data.tree)) {
       projectTree.innerHTML = '';
       
       // Add current path display
@@ -370,6 +373,9 @@ async function loadProjectTree() {
         
         projectTree.appendChild(treeItem);
       });
+    } else {
+      console.error('Invalid tree data:', data);
+      projectTree.innerHTML = '<div class="error">Invalid tree data received</div>';
     }
   } catch (e) {
     console.error('Failed to load project tree:', e);
