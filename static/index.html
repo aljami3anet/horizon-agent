@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Coder Agent - Enhanced</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/diff2html/bundles/css/diff2html.min.css">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">⌘</div>
+        <div class="title">AI Coder Agent</div>
+      </div>
+      
+      <div class="sidebar-actions">
+        <button id="newChatBtn" class="btn btn-primary">New Chat</button>
+        <button id="saveChatBtn" class="btn">Save Chat</button>
+      </div>
+      
+      <div class="sidebar-section">
+        <div class="section-title">Project Explorer</div>
+        <div id="projectTree" class="project-tree"></div>
+        <button id="refreshTree" class="btn btn-small">Refresh</button>
+      </div>
+      
+      <div class="sidebar-section">
+        <div class="section-title">Saved Chats</div>
+        <div id="chatList" class="chat-list"></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div id="chatContainer" class="chat-container">
+        <div class="message assistant">
+          <div class="avatar">🤖</div>
+          <div class="bubble">
+            <div class="content">
+              Hi! I'm your enhanced AI coding assistant. I can help you write, refactor, and explain code. 
+              I also have advanced features like:
+              <ul>
+                <li>🔍 Project tree explorer (left sidebar)</li>
+                <li>📊 Rich diff previews with diff2html</li>
+                <li>⚡ Streaming responses</li>
+                <li>🛡️ Constitutional safety rules</li>
+                <li>📈 Prometheus metrics</li>
+              </ul>
+              Try asking me to create a file, modify code, or explore your project!
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="diffContainer" class="diff-container hidden">
+        <div class="diff-header">
+          <div>Diff Preview</div>
+          <button id="closeDiff" class="btn">Close</button>
+        </div>
+        <div id="diffContent" class="diff-content"></div>
+      </div>
+
+      <div class="composer">
+        <textarea id="input" rows="1" placeholder="Type your message... (Ctrl+K for command palette, Shift+Enter for new line)"></textarea>
+        <button id="sendBtn" class="btn btn-primary">Send</button>
+      </div>
+    </main>
+  </div>
+
+  <!-- Command Palette -->
+  <div id="commandPalette" class="command-palette hidden">
+    <div class="command-palette-content">
+      <input type="text" id="commandInput" placeholder="Type a command..." />
+      <div id="commandResults" class="command-results"></div>
+    </div>
+  </div>
+
+  <!-- File Preview Modal -->
+  <div id="fileModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="fileModalTitle">File Preview</h3>
+        <button id="closeFileModal" class="btn">×</button>
+      </div>
+      <div class="modal-body">
+        <pre id="fileModalContent"></pre>
+      </div>
+    </div>
+  </div>
+
+  <template id="messageTemplate">
+    <div class="message">
+      <div class="avatar"></div>
+      <div class="bubble">
+        <div class="content"></div>
+      </div>
+    </div>
+  </template>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html.min.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
