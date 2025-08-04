@@ -1,0 +1,15 @@
+{"timestamp": "2025-08-04T17:45:20.571491", "level": "INFO", "message": "Request completed", "request_id": "b3373a99-93c9-42e4-bf1f-ca5a408d7a0f", "endpoint": "api_tree", "duration": 0.0003330707550048828}
+{"timestamp": "2025-08-04T17:45:23.430510", "level": "INFO", "message": "Request completed", "request_id": "677ff3fe-3ba7-46a8-9504-6c6edc5270d0", "endpoint": "api_change_directory", "duration": 0.00016021728515625}
+{"timestamp": "2025-08-04T17:45:33.712053", "level": "INFO", "message": "Request completed", "request_id": "041d67ff-483b-47bb-ad0c-cd1b0ba53935", "endpoint": "api_change_directory", "duration": 0.00015115737915039062}
+{"timestamp": "2025-08-04T17:45:47.340438", "level": "INFO", "message": "Request completed", "request_id": "7a4e39d3-eee7-4ede-a0ef-e11abe2d6be7", "endpoint": "api_change_directory", "duration": 0.00015473365783691406}
+{"timestamp": "2025-08-04T17:45:59.696274", "level": "INFO", "message": "Request completed", "request_id": "e10c33cd-1f9b-412f-8920-3c04d79bc607", "endpoint": "api_change_directory", "duration": 0.0002346038818359375}
+{"timestamp": "2025-08-04T17:46:02.294301", "level": "INFO", "message": "Request completed", "request_id": "adaac847-a235-455c-8b27-c4c60036b292", "endpoint": "api_tree", "duration": 0.0003871917724609375}
+{"timestamp": "2025-08-04T17:46:04.769872", "level": "INFO", "message": "Request completed", "request_id": "c17e4504-1ed4-4b29-9aa8-d0a454822b11", "endpoint": "api_current_directory", "duration": 8.249282836914062e-05}
+{"timestamp": "2025-08-04T17:46:24.627003", "level": "INFO", "message": "Request completed", "request_id": "0ac8d9da-9b57-401f-8e64-764af57e37a1", "endpoint": "api_tree", "duration": 0.0004775524139404297}
+{"timestamp": "2025-08-04T17:46:27.009471", "level": "INFO", "message": "Request completed", "request_id": "c76a9607-5518-4f1f-85f9-e9dd7a3a7c09", "endpoint": "api_current_directory", "duration": 0.00011420249938964844}
+{"timestamp": "2025-08-04T17:46:30.794493", "level": "INFO", "message": "Request completed", "request_id": "857af786-e993-405a-9cc6-18decb082526", "endpoint": "api_change_directory", "duration": 0.00021457672119140625}
+{"timestamp": "2025-08-04T17:46:30.800914", "level": "INFO", "message": "Request completed", "request_id": "30b7e20a-7a38-44b5-93e4-082a4190fe55", "endpoint": "api_tree", "duration": 0.0001842975616455078}
+{"timestamp": "2025-08-04T17:46:35.547233", "level": "error", "message": "Error processing message: name 'save_chat_history' is not defined", "request_id": null}
+{"timestamp": "2025-08-04T17:46:35.547614", "level": "INFO", "message": "Request completed", "request_id": "91e39ac5-9dbd-4ed5-b695-4625f68ba1fd", "endpoint": "api_chat", "duration": 0.39820122718811035}
+{"timestamp": "2025-08-04T17:46:52.223664", "level": "info", "message": "Chat history saved to chats/chat_2025-08-04_17-46-52.md", "request_id": null}
+{"timestamp": "2025-08-04T17:46:52.223914", "level": "INFO", "message": "Request completed", "request_id": "5c321abf-0de5-4026-be9a-d3a2d2f2740f", "endpoint": "api_chat", "duration": 0.3578603267669678}

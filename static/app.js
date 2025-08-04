@@ -331,36 +331,90 @@ async function sendMessage() {
 
 async function loadProjectTree() {
   try {
-    const res = await fetch('/api/tree');
+    const sessionId = 'default'; // You can generate unique session IDs if needed
+    const res = await fetch(`/api/tree?session_id=${sessionId}`);
     const data = await res.json();
+    
     if (data.tree) {
       projectTree.innerHTML = '';
-      const lines = data.tree.split('\n');
-      lines.forEach(line => {
-        if (line.trim()) {
-          const item = document.createElement('div');
-          item.className = 'tree-item';
-          if (line.includes('/')) {
-            item.classList.add('folder');
-          } else {
-            item.classList.add('file');
-          }
-          item.textContent = line;
-          item.onclick = () => {
-            if (line.includes('/')) {
-              // TODO: Expand/collapse folder
-            } else {
-              // Open file preview
-              const filename = line.trim();
-              openFilePreview(filename);
-            }
-          };
-          projectTree.appendChild(item);
+      
+      // Add current path display
+      const pathDisplay = document.createElement('div');
+      pathDisplay.className = 'current-path';
+      pathDisplay.innerHTML = `<strong>📁 ${data.current_path}</strong>`;
+      projectTree.appendChild(pathDisplay);
+      
+      // Add parent directory link if not at root
+      if (data.parent_path) {
+        const parentLink = document.createElement('div');
+        parentLink.className = 'tree-item folder parent-link';
+        parentLink.innerHTML = '📁 .. (Parent Directory)';
+        parentLink.onclick = () => navigateToDirectory(data.parent_path);
+        projectTree.appendChild(parentLink);
+      }
+      
+      // Add directories and files
+      data.tree.forEach(item => {
+        const treeItem = document.createElement('div');
+        treeItem.className = 'tree-item';
+        
+        if (item.type === 'directory') {
+          treeItem.classList.add('folder');
+          treeItem.innerHTML = `📁 ${item.name}`;
+          treeItem.onclick = () => navigateToDirectory(item.path);
+        } else {
+          treeItem.classList.add('file');
+          treeItem.innerHTML = `📄 ${item.name}`;
+          treeItem.onclick = () => openFilePreview(item.path);
         }
+        
+        projectTree.appendChild(treeItem);
       });
     }
   } catch (e) {
     console.error('Failed to load project tree:', e);
+    projectTree.innerHTML = '<div class="error">Failed to load project tree</div>';
+  }
+}
+
+async function navigateToDirectory(path) {
+  try {
+    const sessionId = 'default';
+    const res = await fetch('/api/change_directory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: sessionId,
+        directory: path
+      })
+    });
+    
+    const data = await res.json();
+    if (data.success) {
+      // Reload the tree with the new directory
+      await loadProjectTree();
+      
+      // Update the AI assistant's awareness
+      updateAIAssistantContext();
+    } else {
+      console.error('Failed to change directory:', data.error);
+    }
+  } catch (e) {
+    console.error('Error navigating to directory:', e);
+  }
+}
+
+async function updateAIAssistantContext() {
+  try {
+    const sessionId = 'default';
+    const res = await fetch(`/api/current_directory?session_id=${sessionId}`);
+    const data = await res.json();
+    
+    // Add a system message to inform the AI about the directory change
+    const contextMessage = `Current working directory changed to: ${data.current_directory}`;
+    createMessage('system', contextMessage);
+  } catch (e) {
+    console.error('Failed to update AI context:', e);
   }
 }
 
@@ -429,7 +483,7 @@ input.addEventListener('keydown', (e) => {
 
 newChatBtn.addEventListener('click', () => {
   chatContainer.innerHTML = '';
-  window.location.reload();
+  createMessage('assistant', 'Hello! I\'m your AI coding assistant. I can help you with:\n\n• Reading and editing files\n• Searching through code\n• Creating new files and directories\n• Running commands\n• Navigating your project structure\n\nWhat would you like to work on today?');
 });
 
 refreshTree.addEventListener('click', loadProjectTree);
@@ -585,7 +639,6 @@ async function loadChat(filename) {
     }
 }
 
-window.addEventListener('load', async () => {
-  await loadChatList();
-  await loadProjectTree();
-});
+// Initialize the app
+loadChatList();
+loadProjectTree();
