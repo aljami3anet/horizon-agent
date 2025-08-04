@@ -10,6 +10,7 @@ class TestFlaskEndpoints:
     @pytest.fixture
     def client(self):
         """Create a test client for the Flask app."""
+        os.environ['OPENROUTER_API_KEY'] = 'test-key'  # Set dummy key for tests
         app.config['TESTING'] = True
         with app.test_client() as client:
             yield client

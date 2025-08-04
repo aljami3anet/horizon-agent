@@ -480,8 +480,10 @@ def api_chat_stream():
     if not user_text:
         return jsonify({'error': 'Empty message'}), 400
 
+    request_id = getattr(request, 'request_id', 'unknown')
+
     def generate():
-        for chunk in process_user_message_stream(user_text):
+        for chunk in process_user_message_stream(user_text, request_id):
             yield f"data: {json.dumps(chunk)}\n\n"
         yield "data: [DONE]\n\n"
 
@@ -538,10 +540,8 @@ def process_user_message(user_text: str) -> dict:
         else:
             return {'reply': full_response}
 
-def process_user_message_stream(user_text: str):
+def process_user_message_stream(user_text: str, request_id: str):
     """Process user message with streaming response."""
-    request_id = getattr(request, 'request_id', 'unknown')
-    
     with assistant_lock:
         assistant.messages.append({"role": "user", "content": user_text})
         
