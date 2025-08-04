@@ -15,7 +15,7 @@ import prometheus_client
 from prometheus_client import Counter, Histogram, Gauge
 import redis
 from dotenv import load_dotenv
-import requests
+import requests  # type: ignore  # for mypy if types-requests is missing
 
 # Load environment variables
 load_dotenv()
@@ -80,7 +80,7 @@ class StructuredLogger:
         self.log_file = 'logs/app.log'
         os.makedirs('logs', exist_ok=True)
     
-    def log(self, level: str, message: str, request_id: str = None, **kwargs):
+    def log(self, level: str, message: str, request_id: Optional[str] = None, **kwargs):
         log_entry = {
             'timestamp': datetime.utcnow().isoformat(),
             'level': level,
