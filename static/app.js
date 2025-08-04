@@ -99,10 +99,17 @@ function createConfirmationPrompt(action) {
   const content = document.createElement('div');
   content.className = 'content';
   
-  const formattedArgs = JSON.stringify(action.args, null, 2);
+  // Debug: Log the action object to see its structure
+  console.log('Action object:', action);
+  
+  // Fix: Handle both possible structures
+  const toolName = action.name || action.tool_name;
+  const toolArgs = action.args || action.arguments || {};
+  const formattedArgs = JSON.stringify(toolArgs, null, 2);
+  
   content.innerHTML = `
     <p>I am about to perform the following action:</p>
-    <pre><code class="language-json hljs">${action.name}(${formattedArgs})</code></pre>
+    <pre><code class="language-json hljs">${toolName}(${formattedArgs})</code></pre>
     <p>Do you want to proceed?</p>
   `;
 
@@ -114,7 +121,11 @@ function createConfirmationPrompt(action) {
   confirmBtn.textContent = 'Confirm';
   confirmBtn.onclick = () => {
     buttonGroup.remove();
-    executeConfirmedAction(action);
+    // Use the correct structure for the API call
+    executeConfirmedAction({
+      name: toolName,
+      args: toolArgs
+    });
   };
 
   const cancelBtn = document.createElement('button');
@@ -131,14 +142,14 @@ function createConfirmationPrompt(action) {
   diffBtn.onclick = async () => {
     try {
       let resp;
-      if (action.name === 'replace_code') {
+      if (toolName === 'replace_code') {
         resp = await fetch('/api/preview_replace_diff', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            filename: action.args && action.args.filename,
-            old_code: action.args && action.args.old_code,
-            new_code: action.args && action.args.new_code,
+            filename: toolArgs.filename,
+            old_code: toolArgs.old_code,
+            new_code: toolArgs.new_code,
           })
         });
         const data = await resp.json();
@@ -147,13 +158,13 @@ function createConfirmationPrompt(action) {
         } else {
           showDiff(`Error: ${data.error || 'Failed to generate replace diff'}`);
         }
-      } else if (action.name === 'write_file') {
+      } else if (toolName === 'write_file') {
         resp = await fetch('/api/preview_write_diff', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            filename: action.args && action.args.filename,
-            content: action.args && action.args.content,
+            filename: toolArgs.filename,
+            content: toolArgs.content,
           })
         });
         const data = await resp.json();
