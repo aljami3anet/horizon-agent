@@ -508,6 +508,61 @@ def api_test_tree():
         'parent_path': None
     })
 
+@app.route('/api/test-tools', methods=['GET'])
+@log_request
+def api_test_tools():
+    """Test endpoint to verify tools work without AI model."""
+    try:
+        # Test list_files tool
+        list_result = assistant.list_files(".")
+        
+        # Test read_file tool (if test_file.txt exists)
+        read_result = None
+        if os.path.exists("test_file.txt"):
+            read_result = assistant.read_file("test_file.txt")
+        
+        return jsonify({
+            'success': True,
+            'list_files_result': list_result,
+            'read_file_result': read_result,
+            'current_directory': assistant.get_current_directory()
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/test-ai-tools', methods=['POST'])
+@log_request
+def api_test_ai_tools():
+    """Test endpoint that simulates AI tool calling."""
+    data = request.get_json(force=True)
+    user_message = data.get('message', '').strip()
+    
+    try:
+        # Simulate AI tool calling based on user message
+        if 'list' in user_message.lower() and 'file' in user_message.lower():
+            # Simulate AI calling list_files tool
+            result = assistant.list_files(".")
+            return jsonify({
+                'reply': f"I found the following files in the current directory:\n{result}",
+                'tool_called': 'list_files',
+                'tool_result': result
+            })
+        elif 'read' in user_message.lower() and 'file' in user_message.lower():
+            # Simulate AI calling read_file tool
+            result = assistant.read_file("test_file.txt")
+            return jsonify({
+                'reply': f"Here's the content of test_file.txt:\n{result}",
+                'tool_called': 'read_file',
+                'tool_result': result
+            })
+        else:
+            return jsonify({
+                'reply': "I can help you with file operations. Try asking me to 'list files' or 'read a file'.",
+                'tool_called': None
+            })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/chat', methods=['POST'])
 @log_request
 def api_chat():

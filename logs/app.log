@@ -22,3 +22,16 @@
 {"timestamp": "2025-08-04T18:17:37.417918", "level": "INFO", "message": "Request completed", "request_id": "5539c58a-8e4e-4c08-9d40-a906b075d25d", "endpoint": "api_test_tree", "duration": 8.511543273925781e-05}
 {"timestamp": "2025-08-04T18:27:53.924301", "level": "INFO", "message": "Request completed", "request_id": "514c2ef3-e808-4def-a0dc-55ef4afc0d9d", "endpoint": "api_tree", "duration": 0.0006031990051269531}
 {"timestamp": "2025-08-04T18:36:53.691358", "level": "INFO", "message": "Request completed", "request_id": "0d16f48a-6910-41a5-b74d-14e1c3cdcd5b", "endpoint": "api_tree", "duration": 0.0007712841033935547}
+{"timestamp": "2025-08-04T20:32:57.782410", "level": "info", "message": "Chat history saved to chats/chat_2025-08-04_20-32-57.md", "request_id": null}
+{"timestamp": "2025-08-04T20:32:57.782758", "level": "INFO", "message": "Request completed", "request_id": "66372168-2666-463e-92b4-f70ed8af0fc1", "endpoint": "api_chat", "duration": 0.3987257480621338}
+{"timestamp": "2025-08-04T20:33:01.833303", "level": "INFO", "message": "User confirmed execution", "request_id": "537c2b77-2f6e-46b3-9f80-3d55f3c08a34", "tool_name": "list_files", "arguments": {"directory": "."}}
+{"timestamp": "2025-08-04T20:33:13.671721", "level": "INFO", "message": "Request completed", "request_id": "537c2b77-2f6e-46b3-9f80-3d55f3c08a34", "endpoint": "api_execute_action", "duration": 11.83833932876587}
+{"timestamp": "2025-08-04T20:33:27.858322", "level": "INFO", "message": "User confirmed execution", "request_id": "7845689c-235d-499a-9c87-ae04ef5d721a", "tool_name": "list_files", "arguments": {"directory": "."}}
+{"timestamp": "2025-08-04T20:33:28.703500", "level": "INFO", "message": "Request completed", "request_id": "7845689c-235d-499a-9c87-ae04ef5d721a", "endpoint": "api_execute_action", "duration": 0.8451781272888184}
+{"timestamp": "2025-08-04T20:33:44.778530", "level": "info", "message": "Chat history saved to chats/chat_2025-08-04_20-33-44.md", "request_id": null}
+{"timestamp": "2025-08-04T20:33:44.778733", "level": "INFO", "message": "Request completed", "request_id": "9441bfdd-afa4-4d27-80e6-93e609e4a06a", "endpoint": "api_chat", "duration": 12.990415573120117}
+{"timestamp": "2025-08-04T20:34:02.316025", "level": "INFO", "message": "Request completed", "request_id": "4d3b24bc-d339-4a17-aacb-59f893029e03", "endpoint": "api_test_tools", "duration": 0.00015974044799804688}
+{"timestamp": "2025-08-04T20:34:06.262314", "level": "info", "message": "Chat history saved to chats/chat_2025-08-04_20-34-06.md", "request_id": null}
+{"timestamp": "2025-08-04T20:34:06.262558", "level": "INFO", "message": "Request completed", "request_id": "879fb3b5-0e03-4527-9413-a937e51a4b11", "endpoint": "api_chat", "duration": 0.8092231750488281}
+{"timestamp": "2025-08-04T20:34:33.857994", "level": "INFO", "message": "Request completed", "request_id": "430f1776-00dd-4187-bec5-8da054bcb7db", "endpoint": "api_test_ai_tools", "duration": 0.00030422210693359375}
+{"timestamp": "2025-08-04T20:34:36.689339", "level": "INFO", "message": "Request completed", "request_id": "5408e286-71d3-4618-b577-5484d218325a", "endpoint": "api_test_ai_tools", "duration": 0.0002758502960205078}
