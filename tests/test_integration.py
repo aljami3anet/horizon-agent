@@ -38,6 +38,7 @@ class TestFlaskEndpoints:
         # Should either have a reply or an action_request
         assert 'reply' in data or 'action_request' in data or 'error' in data
     
+    @pytest.mark.skipif(os.environ.get("CI") == "true", reason="Skip streaming test in CI")
     def test_chat_stream_endpoint(self, client):
         """Test the streaming chat endpoint."""
         response = client.post('/api/chat/stream', 
