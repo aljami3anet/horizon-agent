@@ -42,7 +42,8 @@ os.makedirs(KNOWLEDGE_DIR, exist_ok=True)
 os.makedirs(BACKUP_DIR, exist_ok=True)
 
 # Session management for current directory tracking
-current_directories = {}  # session_id -> current_directory
+# FIX 1: Added type annotation to resolve mypy error [var-annotated]
+current_directories: Dict[str, str] = {}  # session_id -> current_directory
 
 # Redis for rate limiting and session management
 REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379')
@@ -442,6 +443,41 @@ class EnhancedAIAssistant:
 
         return None, "All models failed"
 
+    # FIX 2: Added the missing _execute_model_call_stream method to resolve mypy error [attr-defined]
+    def _execute_model_call_stream(self):
+        """Executes a model call and yields streaming results."""
+        response, error = self._execute_model_call()
+
+        if error:
+            yield {"error": error}
+            return
+
+        if response is None:
+            yield {"error": "Failed to get a response from the model."}
+            return
+            
+        try:
+            for line in response.iter_lines():
+                if line:
+                    line_str = line.decode('utf-8')
+                    if line_str.startswith('data: '):
+                        data_str = line_str[6:]
+                        if data_str == '[DONE]':
+                            break
+                        try:
+                            chunk = json.loads(data_str)
+                            yield chunk
+                        except json.JSONDecodeError:
+                            JSON_PARSE_FAILURES.inc()
+                            logger.log('WARNING', 'Failed to parse JSON stream chunk', getattr(request, 'request_id', 'unknown'), chunk=data_str)
+                            continue
+        except Exception as e:
+            logger.log('ERROR', 'Error during model stream processing', getattr(request, 'request_id', 'unknown'), error=str(e))
+            yield {"error": f"An error occurred while streaming the response: {e}"}
+        finally:
+            if response:
+                response.close()
+
     def _build_prompt(self):
         system_prompt = self.messages[0]['content']
         conversation_history = "\n".join(
@@ -546,13 +582,23 @@ def process_user_message(user_text: str) -> dict:
         context_message = f"Current working directory: {current_dir}\n\nUser request: {user_text}"
         
         try:
-            response = assistant._execute_model_call()
-            assistant.messages.append({"role": "assistant", "content": response})
+            response_stream = assistant._execute_model_call_stream()
+            # In a non-streaming context, we aggregate the response
+            full_response = ""
+            for chunk in response_stream:
+                if "error" in chunk:
+                    raise Exception(chunk["error"])
+                if 'choices' in chunk and chunk['choices']:
+                    delta = chunk['choices'][0].get('delta', {})
+                    if 'content' in delta:
+                        full_response += delta['content']
+
+            assistant.messages.append({"role": "assistant", "content": full_response})
             
             # Save chat history
             save_chat_history()
             
-            return {"reply": response}
+            return {"reply": full_response}
         except Exception as e:
             error_msg = f"Error processing message: {str(e)}"
             logger.log("error", error_msg)
