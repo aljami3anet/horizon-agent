@@ -407,7 +407,7 @@ When you need to use a tool, respond with a JSON object inside a ```json code bl
                 
                 response = self.circuit_breaker.call(
                     lambda: requests.post(
-                        "[https://openrouter.ai/api/v1/chat/completions](https://openrouter.ai/api/v1/chat/completions)",
+                        "https://openrouter.ai/api/v1/chat/completions",
                         headers=headers,
                         json=payload,
                         stream=True
