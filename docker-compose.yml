@@ -10,6 +10,9 @@ services:
       - REDIS_URL=redis://redis:6379
       - PORT=5051
     volumes:
+      - E:/:/e_drive
+      - F:/:/f_drive
+      - G:/:/g_drive
       - ./chats:/app/chats
       - ./workspace:/app/workspace
       - ./knowledge:/app/knowledge
