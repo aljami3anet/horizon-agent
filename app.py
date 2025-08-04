@@ -41,6 +41,9 @@ os.makedirs(WORKSPACE_DIR, exist_ok=True)
 os.makedirs(KNOWLEDGE_DIR, exist_ok=True)
 os.makedirs(BACKUP_DIR, exist_ok=True)
 
+# Session management for current directory tracking
+current_directories = {}  # session_id -> current_directory
+
 # Redis for rate limiting and session management
 REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379')
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
@@ -99,6 +102,29 @@ def correlate_request():
     request.request_id = request_id
     return request_id
 
+def get_current_directory(session_id=None):
+    """Get the current directory for a session, defaulting to workspace root."""
+    if session_id and session_id in current_directories:
+        return current_directories[session_id]
+    return os.path.abspath('.')
+
+def save_chat_history():
+    """Save chat history to file."""
+    try:
+        timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        filename = f"chat_{timestamp}.md"
+        filepath = os.path.join(CHATS_DIR, filename)
+        
+        with open(filepath, 'w', encoding='utf-8') as f:
+            for msg in assistant.messages:
+                role = msg['role']
+                content = msg['content']
+                f.write(f"## {role.upper()}\n\n{content}\n\n---\n\n")
+        
+        logger.log("info", f"Chat history saved to {filepath}")
+    except Exception as e:
+        logger.log("error", f"Failed to save chat history: {e}")
+
 def log_request(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -127,33 +153,12 @@ class EnhancedAIAssistant:
     def __init__(self):
         self.messages = [{
             "role": "system",
-            "content": """You are an expert AI programmer and universal code assistant. Your goal is to help users by writing and editing code in any language. Follow these rules strictly:
-
-1. **Match Indentation Style**: When editing a file, you MUST detect and match the existing indentation style.
-2. **Use Precise Tools**: To add new code, use `insert_at_line` with a specific line number. To modify existing code, use `replace_code` by first reading the exact block to be replaced.
-3. **Write Clean Code**: Generate clean, readable, and idiomatic code appropriate for the language you are writing.
-4. **Complete Tasks**: Fulfill the user's request step-by-step. If you need to read a file first to understand the context, do so.
-5. **Constitutional Rules**: Never touch files in the following patterns without explicit user permission:
-   - System files (/, /etc, /usr, /var)
-   - Hidden files (.git, .env, .config)
-   - Backup files (*.bak, *.backup, *.old)
-   - Lock files (*.lock, package-lock.json, yarn.lock)
-   - Database files (*.db, *.sqlite)
-   - Log files (*.log)
-   - Temporary files (*.tmp, *.temp)
-
-When you need to use a tool, respond with a JSON object inside a ```json code block:
-```json
-{
-  "tool_call": {
-    "name": "<tool_name>",
-    "arguments": {
-      "<arg_name>": "<arg_value>"
-    }
-  }
-}
-```"""
+            "content": """You are an AI coding assistant with access to file system tools. 
+            You can read, write, and modify files, search through code, and execute commands.
+            Always be helpful, precise, and follow best practices.
+            When working with files, be aware of the current working directory context."""
         }]
+        self.current_directory = os.path.abspath('.')
         self.tools = self._get_tools_definition()
         self.available_functions = {
             "list_files": self.list_files,
@@ -176,6 +181,14 @@ When you need to use a tool, respond with a JSON object inside a ```json code bl
         self.circuit_breaker = CircuitBreaker()
         self.session_memory = {}
     
+    def set_current_directory(self, directory):
+        """Set the current working directory for this assistant instance."""
+        self.current_directory = os.path.abspath(directory)
+    
+    def get_current_directory(self):
+        """Get the current working directory."""
+        return self.current_directory
+
     def _get_tools_definition(self):
         return [
             {"type": "function", "function": {"name": "list_files", "description": "Lists all files in the current directory.", "parameters": {"type": "object", "properties": {"directory": {"type": "string", "description": "Directory to list files from"}}, "required": []}}},
@@ -194,151 +207,162 @@ When you need to use a tool, respond with a JSON object inside a ```json code bl
         return match.group(1) if match else ""
 
     def list_files(self, directory="."):
+        """List files in the specified directory."""
         try:
-            files = [f for f in os.listdir(directory) if f != "__pycache__"]
-            if not files: 
-                return "The directory is empty."
-            return "Files in the current directory:\n" + "\n".join(files)
-        except Exception as e: 
-            return f"Error listing files: {e}"
+            # Use current directory as base if relative path
+            if not os.path.isabs(directory):
+                directory = os.path.join(self.current_directory, directory)
+            
+            files = os.listdir(directory)
+            return {"files": files, "directory": directory}
+        except Exception as e:
+            return {"error": str(e)}
 
     def read_file(self, filename, start_line=None, end_line=None):
+        """Read a file with optional line range."""
         try:
-            with open(filename, 'r', encoding='utf-8') as f: 
-                lines = f.readlines()
-            if start_line is None and end_line is None:
-                content = "".join(lines)
-                return f"Content of '{filename}':\n---\n{content}\n---"
-            start_index = (int(start_line) - 1) if start_line else 0
-            end_index = int(end_line) if end_line else len(lines)
-            if start_index < 0: 
-                start_index = 0
-            selected_lines = lines[start_index:end_index]
-            content = "".join(selected_lines)
-            return f"Content of '{filename}' from line {start_line or 1} to {end_line or len(lines)}:\n---\n{content}\n---"
-        except FileNotFoundError: 
-            return f"Error: File '{filename}' not found."
-        except Exception as e: 
-            return f"Error reading file '{filename}': {e}"
+            # Use current directory as base if relative path
+            if not os.path.isabs(filename):
+                filename = os.path.join(self.current_directory, filename)
+            
+            with open(filename, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            if start_line is not None or end_line is not None:
+                lines = content.splitlines()
+                start = start_line - 1 if start_line else 0
+                end = end_line if end_line else len(lines)
+                content = '\n'.join(lines[start:end])
+            
+            return {"content": content, "filename": filename}
+        except Exception as e:
+            return {"error": str(e)}
 
     def write_file(self, filename, content):
+        """Write content to a file."""
         try:
+            # Use current directory as base if relative path
+            if not os.path.isabs(filename):
+                filename = os.path.join(self.current_directory, filename)
+            
             # Create backup before writing
             if os.path.exists(filename):
-                backup_path = os.path.join(BACKUP_DIR, f"{filename}_{int(time.time())}.bak")
-                os.makedirs(os.path.dirname(backup_path), exist_ok=True)
-                with open(filename, 'r', encoding='utf-8') as src:
-                    with open(backup_path, 'w', encoding='utf-8') as dst:
-                        dst.write(src.read())
+                backup_path = os.path.join(BACKUP_DIR, f"{os.path.basename(filename)}.{int(time.time())}.bak")
+                with open(filename, 'r', encoding='utf-8') as f:
+                    with open(backup_path, 'w', encoding='utf-8') as bf:
+                        bf.write(f.read())
             
-            if isinstance(content, (dict, list)):
-                content = json.dumps(content, indent=4)
-            with open(filename, 'w', encoding='utf-8') as f: 
+            with open(filename, 'w', encoding='utf-8') as f:
                 f.write(content)
-            TOOL_CALL_SUCCESS.labels(tool_name='write_file', status='success').inc()
-            return f"Successfully wrote content to '{filename}'."
-        except Exception as e: 
-            TOOL_CALL_SUCCESS.labels(tool_name='write_file', status='error').inc()
-            return f"Error writing to file '{filename}': {e}"
+            return {"success": True, "filename": filename}
+        except Exception as e:
+            return {"error": str(e)}
 
     def delete_file(self, filename):
+        """Delete a file."""
         try:
+            # Use current directory as base if relative path
+            if not os.path.isabs(filename):
+                filename = os.path.join(self.current_directory, filename)
+            
             # Create backup before deleting
             if os.path.exists(filename):
-                backup_path = os.path.join(BACKUP_DIR, f"{filename}_{int(time.time())}.bak")
-                os.makedirs(os.path.dirname(backup_path), exist_ok=True)
-                with open(filename, 'r', encoding='utf-8') as src:
-                    with open(backup_path, 'w', encoding='utf-8') as dst:
-                        dst.write(src.read())
+                backup_path = os.path.join(BACKUP_DIR, f"{os.path.basename(filename)}.{int(time.time())}.bak")
+                with open(filename, 'r', encoding='utf-8') as f:
+                    with open(backup_path, 'w', encoding='utf-8') as bf:
+                        bf.write(f.read())
             
             os.remove(filename)
-            TOOL_CALL_SUCCESS.labels(tool_name='delete_file', status='success').inc()
-            return f"Successfully deleted file '{filename}'."
-        except FileNotFoundError: 
-            TOOL_CALL_SUCCESS.labels(tool_name='delete_file', status='error').inc()
-            return f"Error: File '{filename}' not found for deletion."
-        except Exception as e: 
-            TOOL_CALL_SUCCESS.labels(tool_name='delete_file', status='error').inc()
-            return f"Error deleting file '{filename}': {e}"
+            return {"success": True, "filename": filename}
+        except Exception as e:
+            return {"error": str(e)}
 
     def create_directory(self, directory_name):
+        """Create a new directory."""
         try:
+            # Use current directory as base if relative path
+            if not os.path.isabs(directory_name):
+                directory_name = os.path.join(self.current_directory, directory_name)
+            
             os.makedirs(directory_name, exist_ok=True)
-            TOOL_CALL_SUCCESS.labels(tool_name='create_directory', status='success').inc()
-            return f"Successfully created directory '{directory_name}'."
+            return {"success": True, "directory": directory_name}
         except Exception as e:
-            TOOL_CALL_SUCCESS.labels(tool_name='create_directory', status='error').inc()
-            return f"Error creating directory '{directory_name}': {e}"
+            return {"error": str(e)}
 
     def insert_at_line(self, filename, code_to_insert, line_number):
+        """Insert code at a specific line number."""
         try:
-            with open(filename, 'r', encoding='utf-8') as f: 
+            # Use current directory as base if relative path
+            if not os.path.isabs(filename):
+                filename = os.path.join(self.current_directory, filename)
+            
+            with open(filename, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
-            target_line = int(line_number)
-            target_index = target_line - 1
-            if not (0 <= target_index <= len(lines)): 
-                return f"Error: Line number {target_line} is out of bounds for file '{filename}' which has {len(lines)} lines."
-            base_indent = self._get_indentation(lines[target_index]) if target_index < len(lines) else ""
-            indented_code_lines = [f"{base_indent}{L}\n" for L in code_to_insert.splitlines()]
-            lines[target_index:target_index] = indented_code_lines
-            with open(filename, 'w', encoding='utf-8') as f: 
+            
+            # Create backup
+            backup_path = os.path.join(BACKUP_DIR, f"{os.path.basename(filename)}.{int(time.time())}.bak")
+            with open(filename, 'r', encoding='utf-8') as f:
+                with open(backup_path, 'w', encoding='utf-8') as bf:
+                    bf.write(f.read())
+            
+            # Insert at line (1-indexed to 0-indexed)
+            lines.insert(line_number - 1, code_to_insert + '\n')
+            
+            with open(filename, 'w', encoding='utf-8') as f:
                 f.writelines(lines)
-            TOOL_CALL_SUCCESS.labels(tool_name='insert_at_line', status='success').inc()
-            return f"Successfully inserted code at line {target_line} in '{filename}'."
-        except FileNotFoundError: 
-            TOOL_CALL_SUCCESS.labels(tool_name='insert_at_line', status='error').inc()
-            return f"Error: File '{filename}' not found."
-        except ValueError: 
-            TOOL_CALL_SUCCESS.labels(tool_name='insert_at_line', status='error').inc()
-            return f"Error: 'line_number' must be an integer."
-        except Exception as e: 
-            TOOL_CALL_SUCCESS.labels(tool_name='insert_at_line', status='error').inc()
-            return f"Error inserting code into '{filename}': {e}"
+            
+            return {"success": True, "filename": filename, "line": line_number}
+        except Exception as e:
+            return {"error": str(e)}
 
     def replace_code(self, filename, old_code, new_code):
+        """Replace specific code in a file."""
         try:
-            with open(filename, 'r', encoding='utf-8') as f: 
+            # Use current directory as base if relative path
+            if not os.path.isabs(filename):
+                filename = os.path.join(self.current_directory, filename)
+            
+            with open(filename, 'r', encoding='utf-8') as f:
                 content = f.read()
-            if old_code not in content: 
-                return f"Error: The specified 'old_code' was not found in '{filename}'. It must be an exact match."
-            first_line_of_old_code = old_code.splitlines()[0]
-            base_indent = self._get_indentation(first_line_of_old_code)
-            indented_new_code_lines = [f"{base_indent}{L}" for L in new_code.splitlines()]
-            indented_new_code = "\n".join(indented_new_code_lines)
-            new_content = content.replace(old_code, indented_new_code)
-            with open(filename, 'w', encoding='utf-8') as f: 
+            
+            # Create backup
+            backup_path = os.path.join(BACKUP_DIR, f"{os.path.basename(filename)}.{int(time.time())}.bak")
+            with open(backup_path, 'w', encoding='utf-8') as bf:
+                bf.write(content)
+            
+            # Replace the code
+            new_content = content.replace(old_code, new_code)
+            
+            with open(filename, 'w', encoding='utf-8') as f:
                 f.write(new_content)
-            TOOL_CALL_SUCCESS.labels(tool_name='replace_code', status='success').inc()
-            return f"Successfully replaced code in '{filename}'."
-        except FileNotFoundError: 
-            TOOL_CALL_SUCCESS.labels(tool_name='replace_code', status='error').inc()
-            return f"Error: File '{filename}' not found."
-        except Exception as e: 
-            TOOL_CALL_SUCCESS.labels(tool_name='replace_code', status='error').inc()
-            return f"Error replacing code in '{filename}': {e}"
+            
+            return {"success": True, "filename": filename}
+        except Exception as e:
+            return {"error": str(e)}
 
     def search_files(self, pattern, directory=".", file_pattern=None):
+        """Search for text in files."""
         try:
-            import fnmatch
+            # Use current directory as base if relative path
+            if not os.path.isabs(directory):
+                directory = os.path.join(self.current_directory, directory)
+            
             results = []
             for root, dirs, files in os.walk(directory):
                 for file in files:
-                    if file_pattern and not fnmatch.fnmatch(file, file_pattern):
+                    if file_pattern and not file.endswith(file_pattern):
                         continue
-                    file_path = os.path.join(root, file)
+                    filepath = os.path.join(root, file)
                     try:
-                        with open(file_path, 'r', encoding='utf-8') as f:
+                        with open(filepath, 'r', encoding='utf-8') as f:
                             content = f.read()
-                            if re.search(pattern, content, re.IGNORECASE):
-                                results.append(f"Found in {file_path}")
+                            if pattern.lower() in content.lower():
+                                results.append(filepath)
                     except:
                         continue
-            if results:
-                return "Search results:\n" + "\n".join(results)
-            else:
-                return "No matches found."
+            return {"results": results, "pattern": pattern}
         except Exception as e:
-            return f"Error searching files: {e}"
+            return {"error": str(e)}
 
     def run_command(self, command):
         # Sandboxed command execution - only allow safe commands
@@ -451,7 +475,16 @@ def serve_index():
 
 @app.route('/upgrade')
 def serve_upgrade():
-    return send_from_directory('upgrade/ui', 'upgrade_index.html')
+    return send_from_directory('static', 'index.html')
+
+@app.route('/<path:filename>')
+def serve_static(filename):
+    response = send_from_directory('static', filename)
+    # Add cache control headers to prevent caching
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 @app.route('/metrics')
 def metrics():
@@ -460,6 +493,20 @@ def metrics():
 @app.route('/health')
 def health():
     return jsonify({'status': 'healthy', 'timestamp': datetime.utcnow().isoformat()})
+
+@app.route('/api/test-tree', methods=['GET'])
+@log_request
+def api_test_tree():
+    """Test endpoint to verify tree API format."""
+    return jsonify({
+        'message': 'Tree API test',
+        'tree': [
+            {'name': 'test.txt', 'type': 'file', 'path': '/test.txt'},
+            {'name': 'testdir', 'type': 'directory', 'path': '/testdir'}
+        ],
+        'current_path': '/workspace',
+        'parent_path': None
+    })
 
 @app.route('/api/chat', methods=['POST'])
 @log_request
@@ -490,106 +537,43 @@ def api_chat_stream():
     return Response(generate(), mimetype='text/event-stream')
 
 def process_user_message(user_text: str) -> dict:
-    """Process user message with enhanced error handling and logging."""
-    request_id = getattr(request, 'request_id', 'unknown')
-    
+    """Process user message and return response."""
     with assistant_lock:
         assistant.messages.append({"role": "user", "content": user_text})
         
-        response_message, error = assistant._execute_model_call()
-        if error:
-            logger.log('ERROR', f'Model call failed: {error}', request_id)
-            return {"error": error}
-
-        # Process streaming response
-        full_response = ""
-        tool_call_found = None
+        # Add current directory context to the system message
+        current_dir = assistant.get_current_directory()
+        context_message = f"Current working directory: {current_dir}\n\nUser request: {user_text}"
         
-        for line in response_message.iter_lines():
-            if line:
-                line = line.decode('utf-8')
-                if line.startswith('data: '):
-                    data = line[6:]
-                    if data == '[DONE]':
-                        break
-                    try:
-                        chunk = json.loads(data)
-                        if 'choices' in chunk and chunk['choices']:
-                            delta = chunk['choices'][0].get('delta', {})
-                            if 'content' in delta:
-                                full_response += delta['content']
-                    except json.JSONDecodeError:
-                        JSON_PARSE_FAILURES.inc()
-                        continue
-
-        # Try to extract tool call
         try:
-            json_match = re.search(r'```json\s*(\{.*?\})\s*```', full_response, re.DOTALL)
-            if json_match:
-                json_str = json_match.group(1)
-                parsed_json = json.loads(json_str)
-                if parsed_json and "tool_call" in parsed_json:
-                    tool_call_found = parsed_json['tool_call']
-        except (json.JSONDecodeError, AttributeError):
-            JSON_PARSE_FAILURES.inc()
-
-        assistant.messages.append({'role': 'assistant', 'content': full_response})
-        
-        if tool_call_found:
-            return handle_tool_call(tool_call_found, request_id)
-        else:
-            return {'reply': full_response}
+            response = assistant._execute_model_call()
+            assistant.messages.append({"role": "assistant", "content": response})
+            
+            # Save chat history
+            save_chat_history()
+            
+            return {"reply": response}
+        except Exception as e:
+            error_msg = f"Error processing message: {str(e)}"
+            logger.log("error", error_msg)
+            return {"error": error_msg}
 
 def process_user_message_stream(user_text: str, request_id: str):
     """Process user message with streaming response."""
     with assistant_lock:
         assistant.messages.append({"role": "user", "content": user_text})
         
-        response_message, error = assistant._execute_model_call()
-        if error:
-            logger.log('ERROR', f'Model call failed: {error}', request_id)
-            yield {"error": error}
-            return
-
-        full_response = ""
-        tool_call_found = None
+        # Add current directory context to the system message
+        current_dir = assistant.get_current_directory()
+        context_message = f"Current working directory: {current_dir}\n\nUser request: {user_text}"
         
-        for line in response_message.iter_lines():
-            if line:
-                line = line.decode('utf-8')
-                if line.startswith('data: '):
-                    data = line[6:]
-                    if data == '[DONE]':
-                        break
-                    try:
-                        chunk = json.loads(data)
-                        if 'choices' in chunk and chunk['choices']:
-                            delta = chunk['choices'][0].get('delta', {})
-                            if 'content' in delta:
-                                content = delta['content']
-                                full_response += content
-                                yield {"type": "content", "content": content}
-                    except json.JSONDecodeError:
-                        JSON_PARSE_FAILURES.inc()
-                        continue
-
-        # Try to extract tool call
         try:
-            json_match = re.search(r'```json\s*(\{.*?\})\s*```', full_response, re.DOTALL)
-            if json_match:
-                json_str = json_match.group(1)
-                parsed_json = json.loads(json_str)
-                if parsed_json and "tool_call" in parsed_json:
-                    tool_call_found = parsed_json['tool_call']
-        except (json.JSONDecodeError, AttributeError):
-            JSON_PARSE_FAILURES.inc()
-
-        assistant.messages.append({'role': 'assistant', 'content': full_response})
-        
-        if tool_call_found:
-            yield {"type": "tool_call", "tool_call": tool_call_found}
-        else:
-            yield {"type": "complete", "reply": full_response}
+            for chunk in assistant._execute_model_call_stream():
+                yield chunk
+        except Exception as e:
+            error_msg = f"Error processing message: {str(e)}"
+            logger.log("error", error_msg, request_id)
+            yield {"error": error_msg}
 
 def handle_tool_call(tool_call: dict, request_id: str) -> dict:
     """Handle tool call with enhanced validation and logging."""
@@ -768,18 +752,54 @@ def api_preview_write_diff():
 @app.route('/api/tree', methods=['GET'])
 @log_request
 def api_tree():
-    """Get project tree structure."""
-    path = request.args.get('path', '.')
+    """Get project tree structure with navigation support."""
+    path = request.args.get('path', None)
+    session_id = request.args.get('session_id', 'default')
+    
     try:
+        # Use session's current directory if no path specified
+        if path is None:
+            path = get_current_directory(session_id)
+        else:
+            # Ensure path is within allowed bounds
+            if not os.path.isabs(path):
+                path = os.path.abspath(path)
+            
+            # Security: prevent directory traversal attacks
+            if '..' in path or path.startswith('/'):
+                path = os.path.abspath('.')
+            
+            # Update current directory for this session
+            current_directories[session_id] = path
+        
         tree = []
-        for root, dirs, files in os.walk(path):
-            level = root.replace(path, '').count(os.sep)
-            indent = ' ' * 2 * level
-            tree.append(f'{indent}{os.path.basename(root)}/')
-            subindent = ' ' * 2 * (level + 1)
-            for file in files:
-                tree.append(f'{subindent}{file}')
-        return jsonify({'tree': '\n'.join(tree)})
+        try:
+            items = os.listdir(path)
+            # Sort: directories first, then files
+            dirs = sorted([item for item in items if os.path.isdir(os.path.join(path, item))])
+            files = sorted([item for item in items if os.path.isfile(os.path.join(path, item))])
+            
+            for item in dirs:
+                tree.append({
+                    'name': item,
+                    'type': 'directory',
+                    'path': os.path.join(path, item)
+                })
+            
+            for item in files:
+                tree.append({
+                    'name': item,
+                    'type': 'file',
+                    'path': os.path.join(path, item)
+                })
+        except PermissionError:
+            tree.append({'error': 'Permission denied'})
+        
+        return jsonify({
+            'tree': tree,
+            'current_path': path,
+            'parent_path': os.path.dirname(path) if path != os.path.abspath('.') else None
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -792,11 +812,59 @@ def api_file():
         return jsonify({'error': 'path parameter required'}), 400
     
     try:
+        # Security: prevent directory traversal attacks
+        if '..' in filename or filename.startswith('/'):
+            return jsonify({'error': 'Invalid path'}), 400
+        
         with open(filename, 'r', encoding='utf-8') as f:
             content = f.read()
-        return jsonify({'content': content})
+        return jsonify({'content': content, 'filename': filename})
     except FileNotFoundError:
         return jsonify({'error': 'File not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/current_directory', methods=['GET'])
+@log_request
+def api_current_directory():
+    """Get the current directory for a session."""
+    session_id = request.args.get('session_id', 'default')
+    current_dir = get_current_directory(session_id)
+    return jsonify({'current_directory': current_dir})
+
+@app.route('/api/change_directory', methods=['POST'])
+@log_request
+def api_change_directory():
+    """Change the current directory for a session."""
+    data = request.get_json(force=True)
+    session_id = data.get('session_id', 'default')
+    new_directory = data.get('directory', '.')
+    
+    try:
+        if not os.path.isabs(new_directory):
+            new_directory = os.path.abspath(new_directory)
+        
+        # Security: prevent directory traversal attacks but allow workspace navigation
+        workspace_root = os.path.abspath('.')
+        if '..' in new_directory or not new_directory.startswith(workspace_root):
+            return jsonify({'error': 'Invalid directory path'}), 400
+        
+        if not os.path.exists(new_directory):
+            return jsonify({'error': 'Directory does not exist'}), 404
+        
+        if not os.path.isdir(new_directory):
+            return jsonify({'error': 'Path is not a directory'}), 400
+        
+        current_directories[session_id] = new_directory
+        
+        # Update assistant's current directory if it exists
+        if hasattr(app, 'assistant'):
+            app.assistant.set_current_directory(new_directory)
+        
+        return jsonify({
+            'success': True,
+            'current_directory': new_directory
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
