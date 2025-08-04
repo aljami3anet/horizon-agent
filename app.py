@@ -15,6 +15,7 @@ import prometheus_client
 from prometheus_client import Counter, Histogram, Gauge
 import redis
 from dotenv import load_dotenv
+import requests
 
 # Load environment variables
 load_dotenv()
